@@ -1,5 +1,5 @@
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2D');
+const ctx = canvas.getContext('2d');
 const player = {
     x: 100,
     y: canvas.height - 150,
