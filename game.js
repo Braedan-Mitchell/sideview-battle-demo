@@ -1,5 +1,21 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
+const keys = {
+    left: false,
+    right: false
+};
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyA') keys.left = true;
+    if (e.code === 'KeyD') keys.right = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'KeyA') keys.left = false;
+    if (e.code === 'KeyD') keys.right = false;
+});
+
 const player = {
     x: 100,
     y: canvas.height - 150,
@@ -8,8 +24,18 @@ const player = {
     color: 'white'
 };
 
-function update() {
+const MOVE_SPEED = 4;
 
+function update() {
+    if (keys.left) {
+        player.x -= MOVE_SPEED;
+    }
+    if (keys.right) {
+        player.x += MOVE_SPEED;
+    }
+
+    // Keep player within canvas bounds
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
 }
 
 function draw() {
