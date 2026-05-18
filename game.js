@@ -25,11 +25,13 @@ window.addEventListener('keyup', (e) => {
     if (e.code === 'KeyL') keys.dodge = false;
 });
 
+const GROUND_HEIGHT = 50;
+
 const player = {
     x: 100,
-    y: canvas.height - 150,
-    width: 50,
-    height:80,
+    y: canvas.height - GROUND_HEIGHT,
+    width: 40,
+    height:70,
     color: 'white',
 };
 
@@ -49,15 +51,23 @@ player.state =PLAYER_STATE.IDLE;
 const MOVE_SPEED = 4;
 
 function update() {
+
+    let currentSpeed = MOVE_SPEED;
+
+    // Slow movement during attack
+    if (player.state === PLAYER_STATE.ATTACKING) {
+        currentSpeed = MOVE_SPEED * 0.4; // 40% speed during attack
+    }
+
     let isMoving = false;
 
     //movement
     if (keys.left) {
-        player.x -= MOVE_SPEED;
+        player.x -= currentSpeed;
         isMoving = true;
     }
     if (keys.right) {
-        player.x += MOVE_SPEED;
+        player.x += currentSpeed;
         isMoving = true;
     }
 
