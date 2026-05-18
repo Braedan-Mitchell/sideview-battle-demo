@@ -1,6 +1,12 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+let dodgePressed = false;
+let dodgeLocked = false; //prevents mashing dodge
+let dodgeCooldownTimer = 0;
+
+const DODGE_COOLDOWN = 150;
+
 const keys = {
     left: false,
     right: false,
@@ -14,6 +20,9 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyD') keys.right = true;
     if (e.code === 'KeyJ') keys.attack = true;
     if (e.code === 'KeyK') keys.block = true;
+    if (e.code === 'KeyL' && !keys.dodge){
+        dodgePressed = true; //only true on the frame the key is pressed
+    }
     if (e.code === 'KeyL') keys.dodge = true;
 });
 
@@ -33,10 +42,21 @@ const player = {
     width: 40,
     height:70,
     color: 'white',
+    isDodging: false,
+    dodgeTimer: 0,
+    dodgeDirection: 0, // -1 left, 0 spot dodge, +1 right
+    isInvincible: false,
+    rotation: 0, // for spin animation
+    scaleX: 1,
+    scaleY: 1,
 };
 
     player.attackTimer = 0;
     const ATTACK_DURATION = 200;
+
+    const DODGE_DURATION = 350;
+    const DODGE_DISTANCE = 80; 
+
 
 const PLAYER_STATE = {
     IDLE: 'idle',
@@ -54,9 +74,78 @@ function update() {
 
     let currentSpeed = MOVE_SPEED;
 
+    if (dodgeCooldownTimer > 0){
+        dodgeCooldownTimer -= 16;
+        if (dodgeCooldownTimer <0) dodgeCooldownTimer = 0;
+    }
+
     // Slow movement during attack
     if (player.state === PLAYER_STATE.ATTACKING) {
         currentSpeed = MOVE_SPEED * 0.4; // 40% speed during attack
+    }
+
+    // Start dodge
+    if (!player.isDodging && dodgePressed && !dodgeLocked && dodgeCooldownTimer <= 0) {
+        dodgePressed = false; //consumes press
+        dodgeLocked = true; //locks until dodge is finished
+        // Initiate dodge
+        player.isDodging = true;
+        player.dodgeTimer = DODGE_DURATION;
+        player.isInvincible = true;
+
+        //determines dodge direction
+        if (keys.left) player.dodgeDirection = -1;
+        else if (keys.right) player.dodgeDirection = 1;
+        else player.dodgeDirection = 0; // spot dodge
+    }
+
+    if (player.isDodging) {
+        const t = 1 - (player.dodgeTimer / DODGE_DURATION);
+        // t goes from 0 to 1 during the dodge duration
+
+        // directional dodge
+        if (player.dodgeDirection !== 0) {
+            // Ease out movement
+            const easeOut = 1 - (1 -t) * (1 - t); // quadratic ease out
+            const dashAmount = easeOut * DODGE_DISTANCE * player.dodgeDirection;
+            player.x += dashAmount - (player.lastDashAmount || 0);
+            player.lastDashAmount = dashAmount;
+
+            //spin
+            player.rotation = t * 360;
+            player.scaleX = 1;
+            player.scaleY = 1;
+        }
+
+        //spot dodge
+        else{
+            //shrink and grow
+            if (t < 0.5) {
+                // first half: squish horizontally
+                player.scaleX = 1 + t * 0.3;
+                player.scaleY = 1 - t * 0.3;
+            } else {
+                // second half: return to normal
+                player.scaleX = 1 + (1 - t) * 0.3;
+                player.scaleY = 1 - (1 - t) * 0.3;
+            }
+
+            player.rotation = 0;
+        }
+
+        // countdown
+        player.dodgeTimer -= 16;
+        if (player.dodgeTimer <= 0) {
+            player.isDodging = false;
+            player.isInvincible = false;
+            player.rotation = 0;
+            player.scaleX = 1;
+            player.scaleY = 1;
+            player.lastDashAmount = 0;
+
+            dodgeCooldownTimer = DODGE_COOLDOWN; //start cooldown
+            dodgeLocked = false; //unlock dodge after finishing
+        }
     }
 
     let isMoving = false;
@@ -90,8 +179,9 @@ function update() {
         player.attackTimer = ATTACK_DURATION;
         player.state = PLAYER_STATE.ATTACKING;
     }
-    else if (keys.dodge) {
-        player.state = PLAYER_STATE.DODGING;
+
+    else if (player.isDodging) {
+    player.state = PLAYER_STATE.DODGING;
     }
     else if (keys.block) {
         player.state = PLAYER_STATE.BLOCKING;
@@ -115,11 +205,27 @@ function draw() {
     if (player.state === PLAYER_STATE.IDLE) player.color = 'white';
     else if (player.state === PLAYER_STATE.MOVING) player.color = 'lightgreen';
     else if (player.state === PLAYER_STATE.BLOCKING) player.color = 'lightblue';
-    else if (player.state === PLAYER_STATE.DODGING) player.color = 'green';
+    else if (player.state === PLAYER_STATE.DODGING) {
+    player.color = player.isInvincible ? 'orange' : 'darkorange';
+    }
     else if (player.state === PLAYER_STATE.ATTACKING) player.color = 'red';
     //player
+    ctx.save();
+
+    // Move to player center
+    ctx.translate(player.x + player.width / 2, player.y - player.height / 2);
+
+    // Apply rotation
+    ctx.rotate(player.rotation * Math.PI / 180);
+
+    // Apply squash/stretch
+    ctx.scale(player.scaleX, player.scaleY);
+
+    // Draw centered rectangle
     ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y - player.height, player.width, player.height);
+    ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+
+    ctx.restore();
 }
 
 function gameLoop() {
