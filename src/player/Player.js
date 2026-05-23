@@ -31,7 +31,21 @@ export class Player {
         this.lastDashAmount = 0;
 
         // Attack
-        this.attackTimer = 0;
+        // --- Combo System Fields ---
+        this.comboIndex = 0;          // which attack in the combo we are on
+        this.currentAttack = null;    // reference to attack data
+        this.attackTimer = 0;         // frame counter for current attack
+        this.attackInProgress = false;
+        this.attackQueued = false;    // buffered J input
+        this.comboTable = [];         // dynamically generated combo sequence
+
+        // --- Attack Movement ---
+        this.attackMovement = 0;      // movement during active frames
+        this.recoveryMovement = 0.5;  // small drift during recovery
+
+        // --- Facing Control ---
+        this.facingLocked = false;    // prevents turning during active frames
+
 
         // State
         this.state = PLAYER_STATE.IDLE;
